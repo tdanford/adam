@@ -30,3 +30,10 @@ object AlignmentRecordField extends FieldEnumeration(AlignmentRecord.SCHEMA$) {
 
   val contig, start, end, mapq, readName, sequence, mateAlignmentStart, cigar, qual, recordGroupId, recordGroupName, readPaired, properPair, readMapped, mateMapped, readNegativeStrand, mateNegativeStrand, firstOfPair, secondOfPair, primaryAlignment, failedVendorQualityChecks, duplicateRead, mismatchingPositions, attributes, recordGroupSequencingCenter, recordGroupDescription, recordGroupRunDateEpoch, recordGroupFlowOrder, recordGroupKeySequence, recordGroupLibrary, recordGroupPredictedMedianInsertSize, recordGroupPlatform, recordGroupPlatformUnit, recordGroupSample, mateContig, origQual = SchemaValue
 }
+
+object AlignmentRecordProjections {
+
+  import AlignmentRecordField._
+
+  val RAW_READS = Projection(readName,
+}
