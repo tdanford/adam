@@ -70,7 +70,7 @@ class RegionRDDFunctions[Region <: ReferenceRegion](rdd: RDD[Region])(implicit k
    * @return The RDD of pairs (f, s) where f comes from the input RDD and s comes from 'that', the argument
    *         RDD.
    */
-  def joinWithinRange[R2 <: ReferenceRegion](that: RDD[R2], range: Long)(implicit kt2 : ClassTag[R2]): RDD[(Region, R2)] =
+  def joinWithinRange[R2 <: ReferenceRegion](that: RDD[R2], range: Long)(implicit kt2: ClassTag[R2]): RDD[(Region, R2)] =
     rdd.keyBy(expander(range))
       .joinByOverlap(that.keyBy(r => r))
       .map(_._2)
