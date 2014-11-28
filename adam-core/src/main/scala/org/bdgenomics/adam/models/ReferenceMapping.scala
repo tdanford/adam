@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.adam.models
 
-trait ReferenceMapping[T] {
+trait ReferenceMapping[T] extends Serializable {
   def getReferenceName(value: T): String
   def getReferenceRegion(value: T): ReferenceRegion
 }

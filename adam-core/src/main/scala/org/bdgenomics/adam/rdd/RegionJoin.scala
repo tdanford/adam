@@ -31,7 +31,21 @@ import scala.reflect.ClassTag
  * Different implementations will have different performance characteristics -- and new implementations
  * will likely be added in the future, see the notes to each individual method for more details.
  */
-object RegionJoin {
+object RegionJoin extends Serializable {
+
+  class FunctionalReferenceMapping[T](mapping: T => Option[ReferenceRegion]) extends ReferenceMapping[T] {
+    override def getReferenceName(value: T): String = mapping(value).map(_.referenceName).orNull
+    override def getReferenceRegion(value: T): ReferenceRegion = mapping(value).orNull
+  }
+
+  def partitionAndJoin[T, U](rddT: RDD[T],
+                             rddU: RDD[U],
+                             tMap: T => Option[ReferenceRegion],
+                             uMap: U => Option[ReferenceRegion])(implicit ttag: ClassTag[T],
+                                                                 utag: ClassTag[U]): RDD[(T, U)] =
+    partitionAndJoin(rddT.sparkContext, rddT, rddU)(
+      new FunctionalReferenceMapping[T](tMap),
+      new FunctionalReferenceMapping[U](uMap), ttag, utag)
 
   /**
    * Performs a region join between two RDDs.
