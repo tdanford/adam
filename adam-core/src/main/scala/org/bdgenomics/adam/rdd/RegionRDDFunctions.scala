@@ -19,7 +19,7 @@ package org.bdgenomics.adam.rdd
 
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
-import org.bdgenomics.adam.models.{ SequenceDictionary, ReferenceRegionWithOrientation, ReferenceRegion }
+import org.bdgenomics.adam.models.{ReferenceMapping, SequenceDictionary, ReferenceRegionWithOrientation, ReferenceRegion}
 import org.bdgenomics.adam.models.ReferenceRegionContext._
 import org.bdgenomics.adam.rich.ReferenceMappingContext.ReferenceRegionReferenceMapping
 import scala.reflect.ClassTag
@@ -178,7 +178,9 @@ class RegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implici
 }
 
 object RegionRDDFunctions extends Serializable {
-  implicit def rddToRegionRDDFunctions[R <: ReferenceRegion](rdd: RDD[R])(implicit kt: ClassTag[R]): RegionRDDFunctions[R] =
+  implicit def rddToRegionRDD[T](rdd : RDD[T])(implicit tkt : ClassTag[T],  tmapping : ReferenceMapping[T]) : RDD[ReferenceRegion] =
+    rdd.map(tmapping.getReferenceRegion).filter(_ != null)
+  implicit def regionRDDToRegionRDDFunctions[R <: ReferenceRegion](rdd: RDD[R])(implicit kt: ClassTag[R]): RegionRDDFunctions[R] =
     new RegionRDDFunctions[R](rdd)
   implicit def rddToOrientedRegionRDDFunctions[R <: ReferenceRegionWithOrientation](rdd: RDD[R])(implicit kt: ClassTag[R]): OrientedRegionRDDFunctions[R] =
     new OrientedRegionRDDFunctions[R](rdd)
