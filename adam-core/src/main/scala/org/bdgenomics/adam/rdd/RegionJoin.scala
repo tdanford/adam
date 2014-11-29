@@ -43,7 +43,7 @@ object RegionJoin extends Serializable {
                              tMap: T => Option[ReferenceRegion],
                              uMap: U => Option[ReferenceRegion])(implicit ttag: ClassTag[T],
                                                                  utag: ClassTag[U]): RDD[(T, U)] =
-    partitionAndJoin(rddT.sparkContext, rddT, rddU)(
+    partitionAndJoin(rddT, rddU)(
       new FunctionalReferenceMapping[T](tMap),
       new FunctionalReferenceMapping[U](uMap), ttag, utag)
 
@@ -66,7 +66,6 @@ object RegionJoin extends Serializable {
    * Finally, within each separate partition, we essentially perform a cartesian-product-and-filter
    * operation.  The result is the region-join.
    *
-   * @param sc A SparkContext for the cluster that will perform the join
    * @param baseRDD The 'left' side of the join, a set of values which correspond (through an implicit
    *                ReferenceMapping) to regions on the genome.
    * @param joinedRDD The 'right' side of the join, a set of values which correspond (through an implicit
@@ -80,12 +79,12 @@ object RegionJoin extends Serializable {
    * @return An RDD of pairs (x, y), where x is from baseRDD, y is from joinedRDD, and the region
    *         corresponding to x overlaps the region corresponding to y.
    */
-  def partitionAndJoin[T, U](sc: SparkContext,
-                             baseRDD: RDD[T],
-                             joinedRDD: RDD[U])(implicit tMapping: ReferenceMapping[T],
-                                                uMapping: ReferenceMapping[U],
-                                                tManifest: ClassTag[T],
-                                                uManifest: ClassTag[U]): RDD[(T, U)] = {
+  def partitionAndJoin[T, U](
+    baseRDD: RDD[T],
+    joinedRDD: RDD[U])(implicit tMapping: ReferenceMapping[T],
+                       uMapping: ReferenceMapping[U],
+                       tManifest: ClassTag[T],
+                       uManifest: ClassTag[U]): RDD[(T, U)] = {
 
     /**
      * Original Join Design:
@@ -126,7 +125,7 @@ object RegionJoin extends Serializable {
 
     // Then, we broadcast those partitions -- this will be the function that allows us to
     // partition all the regions on the right side of the join.
-    val regions = sc.broadcast(multiNonOverlapping)
+    val regions = baseRDD.sparkContext.broadcast(multiNonOverlapping)
 
     // each element of the left-side RDD should have exactly one partition.
     val smallerKeyed: RDD[(ReferenceRegion, T)] =

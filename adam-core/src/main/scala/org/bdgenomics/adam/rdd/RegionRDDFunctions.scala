@@ -19,12 +19,18 @@ package org.bdgenomics.adam.rdd
 
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
-import org.bdgenomics.adam.models.{ReferenceMapping, SequenceDictionary, ReferenceRegionWithOrientation, ReferenceRegion}
+import org.bdgenomics.adam.models.{ ReferenceMapping, SequenceDictionary, ReferenceRegionWithOrientation, ReferenceRegion }
 import org.bdgenomics.adam.models.ReferenceRegionContext._
 import org.bdgenomics.adam.rich.ReferenceMappingContext.ReferenceRegionReferenceMapping
 import scala.reflect.ClassTag
 import scala.math.max
 
+class RegionMappableRDDFunctions[T](rdd: RDD[T])(implicit kt: ClassTag[T], mapping: ReferenceMapping[T]) extends Serializable {
+
+  def joinByOverlap[U](other: RDD[U])(implicit ktu: ClassTag[U], uMapping: ReferenceMapping[U]): RDD[(T, U)] =
+    RegionJoin.partitionAndJoin(rdd, other)
+
+}
 /**
  * Functions (joins, filters, groups, counts) that are often invoked on RDD[R] where R is a
  * type which extends ReferenceRegion (and is often just ReferenceRegion directly).
@@ -178,8 +184,8 @@ class RegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implici
 }
 
 object RegionRDDFunctions extends Serializable {
-  implicit def rddToRegionRDD[T](rdd : RDD[T])(implicit tkt : ClassTag[T],  tmapping : ReferenceMapping[T]) : RDD[ReferenceRegion] =
-    rdd.map(tmapping.getReferenceRegion).filter(_ != null)
+  implicit def rddToRegionMappableRDDFunctions[T](rdd: RDD[T])(implicit kt: ClassTag[T], mapping: ReferenceMapping[T]): RegionMappableRDDFunctions[T] =
+    new RegionMappableRDDFunctions[T](rdd)
   implicit def regionRDDToRegionRDDFunctions[R <: ReferenceRegion](rdd: RDD[R])(implicit kt: ClassTag[R]): RegionRDDFunctions[R] =
     new RegionRDDFunctions[R](rdd)
   implicit def rddToOrientedRegionRDDFunctions[R <: ReferenceRegionWithOrientation](rdd: RDD[R])(implicit kt: ClassTag[R]): OrientedRegionRDDFunctions[R] =

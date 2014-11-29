@@ -134,14 +134,12 @@ class RegionJoinSuite extends SparkFunSuite {
       RegionJoinSuite.getReferenceRegion(record2))
 
     assert(RegionJoin.partitionAndJoin[AlignmentRecord, AlignmentRecord](
-      sc,
       rdd1,
       rdd2).aggregate(true)(
         RegionJoinSuite.merge,
         RegionJoinSuite.and))
 
     assert(RegionJoin.partitionAndJoin[AlignmentRecord, AlignmentRecord](
-      sc,
       rdd1,
       rdd2)
       .aggregate(0)(
@@ -172,7 +170,6 @@ class RegionJoinSuite extends SparkFunSuite {
     val recordsRdd = sc.parallelize(Seq(record1, record2))
 
     assert(RegionJoin.partitionAndJoin[AlignmentRecord, AlignmentRecord](
-      sc,
       baseRdd,
       recordsRdd)
       .aggregate(true)(
@@ -180,7 +177,6 @@ class RegionJoinSuite extends SparkFunSuite {
         RegionJoinSuite.and))
 
     assert(RegionJoin.partitionAndJoin[AlignmentRecord, AlignmentRecord](
-      sc,
       baseRdd,
       recordsRdd).count() === 2)
   }
@@ -207,7 +203,7 @@ class RegionJoinSuite extends SparkFunSuite {
       .build()
     val builtRef2 = AlignmentRecord.newBuilder()
       .setContig(contig2)
-      .setStart(1)
+      .setStart(1L)
       .setReadMapped(true)
       .setCigar("1M")
       .setEnd(2L)
@@ -223,7 +219,6 @@ class RegionJoinSuite extends SparkFunSuite {
     val recordsRdd = sc.parallelize(Seq(record1, record2, record3))
 
     assert(RegionJoin.partitionAndJoin[AlignmentRecord, AlignmentRecord](
-      sc,
       baseRdd,
       recordsRdd)
       .aggregate(true)(
@@ -231,7 +226,6 @@ class RegionJoinSuite extends SparkFunSuite {
         RegionJoinSuite.and))
 
     assert(RegionJoin.partitionAndJoin[AlignmentRecord, AlignmentRecord](
-      sc,
       baseRdd,
       recordsRdd).count() === 3)
   }
@@ -278,7 +272,6 @@ class RegionJoinSuite extends SparkFunSuite {
       recordsRdd)
       .leftOuterJoin(
         RegionJoin.partitionAndJoin(
-          sc,
           baseRdd,
           recordsRdd))
       .filter({

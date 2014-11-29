@@ -92,7 +92,7 @@ class CalculateDepth(protected val args: CalculateDepthArgs) extends ADAMSparkCo
 
     val joinedRDD: RDD[(ReferenceRegion, AlignmentRecord)] =
       if (args.cartesian) RegionJoin.cartesianFilter(variantPositions, mappedRDD)
-      else RegionJoin.partitionAndJoin(sc, variantPositions, mappedRDD)
+      else RegionJoin.partitionAndJoin(variantPositions, mappedRDD)
 
     val depths: RDD[(ReferenceRegion, Int)] =
       joinedRDD.map { case (region, record) => (region, 1) }.reduceByKey(_ + _).sortByKey()
