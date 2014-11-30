@@ -27,8 +27,23 @@ import scala.math.max
 
 class RegionMappableRDDFunctions[T](rdd: RDD[T])(implicit kt: ClassTag[T], mapping: ReferenceMapping[T]) extends Serializable {
 
+  import RegionRDDFunctions._
+
   def joinByOverlap[U](other: RDD[U])(implicit ktu: ClassTag[U], uMapping: ReferenceMapping[U]): RDD[(T, U)] =
-    RegionJoin.partitionAndJoin(rdd, other)
+    rdd.keyBy(mapping.getReferenceRegion)
+      .joinByOverlap(other.keyBy(uMapping.getReferenceRegion))
+      .map(_._2)
+
+  def joinWithinRange[U](other: RDD[U], range: Long)(implicit ktu: ClassTag[U], uMapping: ReferenceMapping[U]): RDD[(T, U)] =
+    rdd.keyBy(mapping.getReferenceRegion)
+      .joinWithinRange(other.keyBy(uMapping.getReferenceRegion), range)
+      .map(_._2)
+
+  def groupByOverlap[U](other: RDD[U])(implicit ktu: ClassTag[U], uMapping: ReferenceMapping[U]): RDD[(T, Iterable[U])] =
+    rdd.joinByOverlap(other).groupByKey()
+
+  def groupWithinRange[U](other: RDD[U], range: Long)(implicit ktu: ClassTag[U], uMapping: ReferenceMapping[U]): RDD[(T, Iterable[U])] =
+    rdd.joinWithinRange(other, range).groupByKey()
 
 }
 /**
