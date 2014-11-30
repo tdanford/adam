@@ -164,27 +164,35 @@ class OrientedRegionRDDFunctions[Region <: ReferenceRegionWithOrientation](rdd: 
     rdd.map(r => r.extend(targetLength))
 }
 
-class RegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implicit rt: ClassTag[R]) extends Serializable {
+class RegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implicit rt: ClassTag[R], vt: ClassTag[V]) extends Serializable {
 
   import RegionRDDFunctions._
 
-  def joinByOverlap[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)])(implicit kt2 : ClassTag[R2]): RDD[((R, R2), (V, V2))] =
+  def joinByOverlap[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)])(implicit kt2: ClassTag[R2]): RDD[((R, R2), (V, V2))] =
     RegionJoin.partitionAndJoin(rdd, that, (p: (R, V)) => Option(p._1), (p2: (R2, V2)) => Option(p2._1))
       .map {
         case pp: ((R, V), (R2, V2)) => ((pp._1._1, pp._2._1), (pp._1._2, pp._2._2))
       }
 
-  def joinByRange[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)], range : Long)(implicit kt2 : ClassTag[R2]) :
-    RDD[((R, R2), (V, V2))] =
-    rdd.keyBy((p : (R, V)) => expander(range)(p._1))
+  def joinWithinRange[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)], range: Long)(implicit kt2: ClassTag[R2]): RDD[((R, R2), (V, V2))] =
+    rdd.keyBy((p: (R, V)) => expander(range)(p._1))
       .joinByOverlap(that.keyBy(r => r._1))
       .map(_._2)
       .map(p => ((p._1._1, p._2._1), (p._1._2, p._2._2)))
 
-  def filterWithinRange[R2 <: ReferenceRegion, V2](range: Long, that: RDD[(R2, V2)]): RDD[(R, V)] =
+  def filterByOverlap[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)])(implicit kt2: ClassTag[R2]): RDD[(R, V)] =
+    rdd.joinByOverlap(that).map(p => (p._1._1, p._2._1)).distinct()
+
+  def filterWithinRange[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)], range: Long): RDD[(R, V)] =
     rdd.keyBy(r => ReferenceRegion(r._1.referenceName, max(0, r._1.start - range), r._1.end + range))
       .joinByOverlap(that.keyBy(r => r._1.asInstanceOf[ReferenceRegion]))
       .map(_._2._1).distinct()
+
+  def groupByOverlap[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)])(implicit kt2: ClassTag[R2], kv2: ClassTag[V2]): RDD[(V, Iterable[V2])] =
+    rdd.joinByOverlap(that).map(_._2).groupByKey()
+
+  def groupWithinRange[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)], range: Long)(implicit kt2: ClassTag[R2], kv2: ClassTag[V2]): RDD[(V, Iterable[V2])] =
+    rdd.joinWithinRange(that, range).map(_._2).groupByKey()
 }
 
 object RegionRDDFunctions extends Serializable {
@@ -198,6 +206,6 @@ object RegionRDDFunctions extends Serializable {
     new RegionRDDFunctions[R](rdd)
   implicit def rddToOrientedRegionRDDFunctions[R <: ReferenceRegionWithOrientation](rdd: RDD[R])(implicit kt: ClassTag[R]): OrientedRegionRDDFunctions[R] =
     new OrientedRegionRDDFunctions[R](rdd)
-  implicit def rddToRegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implicit kt: ClassTag[R]): RegionKeyedRDDFunctions[R, V] =
+  implicit def rddToRegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implicit kt: ClassTag[R], vt: ClassTag[V]): RegionKeyedRDDFunctions[R, V] =
     new RegionKeyedRDDFunctions[R, V](rdd)
 }

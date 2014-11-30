@@ -64,5 +64,27 @@ class RegionKeyedRDDFunctionsSuite extends SparkFunSuite {
     val joined = rdd1.joinByOverlap(rdd2)
 
     assert(joined.collect() === Array(((r1, r2), ("A", "B"))))
+
+    // Make sure that we're checking the referenceName
+    val r3: ReferenceRegion = ReferenceRegion("chr2", 150, 300)
+    val rdd3 = sc.parallelize(Seq(r3 -> "C"))
+
+    assert(rdd1.joinByOverlap(rdd3).collect().isEmpty)
+  }
+
+  sparkTest("groupByOverlap produces the right groupings on a small input set") {
+    val r1_base: ReferenceRegion = ReferenceRegion("chr1", 125, 126)
+    val r2_base: ReferenceRegion = ReferenceRegion("chr1", 400, 401)
+
+    val rA: ReferenceRegion = ReferenceRegion("chr1", 100, 200)
+    val rB: ReferenceRegion = ReferenceRegion("chr1", 120, 300)
+    val rC: ReferenceRegion = ReferenceRegion("chr1", 350, 450)
+    val rD: ReferenceRegion = ReferenceRegion("chr2", 0, 1000)
+
+    val rdd1 = sc.parallelize(Seq(r1_base -> "A", r2_base -> "B"))
+    val rdd2 = sc.parallelize(Seq(rA -> "a", rB -> "b", rC -> "c", rD -> "d"))
+
+    val grouped = rdd1.groupByOverlap(rdd2)
+    assert(grouped.collect() === Array(("A", Seq("a", "b")), ("B", Seq("c"))))
   }
 }
