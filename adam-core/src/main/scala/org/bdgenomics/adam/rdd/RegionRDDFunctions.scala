@@ -46,9 +46,6 @@ class RegionRDDFunctions[Region <: ReferenceRegion](rdd: RDD[Region])(implicit k
 
   private def regionToReferenceRegion(region: Region): Option[ReferenceRegion] = Option(region)
 
-  private def expander(range: Long)(r: Region): ReferenceRegion =
-    ReferenceRegion(r.referenceName, max(0, r.start - range), r.end + range)
-
   /**
    * Performs an 'overlap join' on the input RDD, returning pairs whose first element is a member of the
    * input RDD and whose second element is a member of the argument RDD which overlaps the first element
@@ -171,11 +168,18 @@ class RegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implici
 
   import RegionRDDFunctions._
 
-  def joinByOverlap[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)]): RDD[((R, R2), (V, V2))] =
+  def joinByOverlap[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)])(implicit kt2 : ClassTag[R2]): RDD[((R, R2), (V, V2))] =
     RegionJoin.partitionAndJoin(rdd, that, (p: (R, V)) => Option(p._1), (p2: (R2, V2)) => Option(p2._1))
       .map {
         case pp: ((R, V), (R2, V2)) => ((pp._1._1, pp._2._1), (pp._1._2, pp._2._2))
       }
+
+  def joinByRange[R2 <: ReferenceRegion, V2](that: RDD[(R2, V2)], range : Long)(implicit kt2 : ClassTag[R2]) :
+    RDD[((R, R2), (V, V2))] =
+    rdd.keyBy((p : (R, V)) => expander(range)(p._1))
+      .joinByOverlap(that.keyBy(r => r._1))
+      .map(_._2)
+      .map(p => ((p._1._1, p._2._1), (p._1._2, p._2._2)))
 
   def filterWithinRange[R2 <: ReferenceRegion, V2](range: Long, that: RDD[(R2, V2)]): RDD[(R, V)] =
     rdd.keyBy(r => ReferenceRegion(r._1.referenceName, max(0, r._1.start - range), r._1.end + range))
@@ -184,6 +188,10 @@ class RegionKeyedRDDFunctions[R <: ReferenceRegion, V](rdd: RDD[(R, V)])(implici
 }
 
 object RegionRDDFunctions extends Serializable {
+
+  def expander(range: Long)(r: ReferenceRegion): ReferenceRegion =
+    ReferenceRegion(r.referenceName, max(0, r.start - range), r.end + range)
+
   implicit def rddToRegionMappableRDDFunctions[T](rdd: RDD[T])(implicit kt: ClassTag[T], mapping: ReferenceMapping[T]): RegionMappableRDDFunctions[T] =
     new RegionMappableRDDFunctions[T](rdd)
   implicit def regionRDDToRegionRDDFunctions[R <: ReferenceRegion](rdd: RDD[R])(implicit kt: ClassTag[R]): RegionRDDFunctions[R] =

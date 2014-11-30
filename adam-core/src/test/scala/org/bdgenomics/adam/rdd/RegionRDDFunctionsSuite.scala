@@ -52,3 +52,17 @@ class RegionRDDFunctionsSuite extends SparkFunSuite {
     assert(joined2.collect().isEmpty)
   }
 }
+
+class RegionKeyedRDDFunctionsSuite extends SparkFunSuite {
+  sparkTest("joinByOverlap on an overlapping pair returns one pair") {
+    val r1: ReferenceRegion = ReferenceRegion("chr1", 100, 200)
+    val r2: ReferenceRegion = ReferenceRegion("chr1", 150, 300)
+
+    val rdd1 = sc.parallelize(Seq(r1 -> "A"))
+    val rdd2 = sc.parallelize(Seq(r2 -> "B"))
+
+    val joined = rdd1.joinByOverlap(rdd2)
+
+    assert(joined.collect() === Array(((r1, r2), ("A", "B"))))
+  }
+}
